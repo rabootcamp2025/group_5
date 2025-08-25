@@ -14,6 +14,22 @@ execute:
   warning: true
 ---
 
+## Part1
+
+
+
+
+進捗報告
+
+count_country_mention.pyのコードを参考に、移民に関する演説の本文から国の言及回数を集計した。
+
+当初Pythonコードを一行ずつ解析して、Rのコードに変換するように試みた。Pythonコードに慣れている人がおらず、なかなか概要把握に時間がかかった。
+
+データの環境設定や構築に手間がかかった上に、分析をするにあたり、テキスト分析を初めて実践する者が大半だったため、全体像を把握するのに苦労した。
+
+
+
+
 ### 準備
 
 ```{r}
@@ -26,6 +42,10 @@ library(quanteda)
 library(jsonlite)
 library(readtext)
 library(here)
+library(quanteda.textplots)
+library(stopwords)
+
+
 ```
 
 ### データのインポート
@@ -96,7 +116,7 @@ countries <- map(countries, tolower)
 ```
 
 
-### 辞書化
+### 辞書化・コーパス化・合計集計
 
 ```{r}
 countries_dic <- dictionary(countries)
@@ -146,3 +166,126 @@ graph1
 
 
 ```
+
+## part.2
+これよりも下はhein_bound_immのデータをトークン化し、単語の言及回数をプロットしようと試みた。
+
+
+### スピーチデータを読み込む
+```{r}
+speeches_path <- list.files(here("data/hein_bound_imm"), pattern = "^speeches", full.names = TRUE)
+descr_path <- list.files(here("data/hein_bound_imm"), pattern = "^descr", full.names = TRUE)
+
+
+library(readr)
+
+# テキストファイルを読み込む
+speech_delim <- function(x){read_delim(x, delim = "|", 
+                 col_names = c("doc_id", "text"),
+                 quote = "", trim_ws = TRUE)}
+
+speeches_list <- map(speeches_path, speech_delim)
+
+
+descr_delim <- function(x){read_delim(x, delim = "|", 
+                 col_names = c("doc_id", "text"),
+                 quote = "", trim_ws = TRUE)}
+descr_list <- map(descr_path, descr_delim)
+
+speech <- do.call(rbind,speeches_list)
+
+descr <- do.call(rbind,descr_list) %>% 
+  rename(tag = text)
+
+speech_data <- left_join(speech, descr, by = "doc_id")
+speech_data <- speech_data %>%
+  filter(X3 != 18940614)
+
+```
+
+### コーパス化とトークン化
+
+```{r}
+speech_corpus <- corpus(speech_data)
+
+# 文書 → 文 に分割
+speech_sentences <- corpus_reshape(speech_corpus, to = "sentences")
+
+# 文 → 単語 にトークン化
+speech_tokens <- tokens(speech_sentences, what = "word")
+```
+
+### 共起ネットワーク
+
+グラフをプロットしようとしたが、できなかった。
+```{r}
+#| eval: false
+#| 
+a <- speech_tokens %>%
+  quanteda::tokens_remove(stopwords(language = "en"), valuetype = "fixed") %>%
+  quanteda::dfm() %>%
+  quanteda::dfm_trim(min_termfreq = 4992L) %>%
+  quanteda::fcm() %>%
+  quanteda.textplots::textplot_network()
+```
+
+
+
+
+### トーンファイルの読み込み
+```{r}
+tone_df <- read.delim("G:/workings/group_5/data/data/speeches/Congress/imm_speech_ids_with_tone.tsv")
+
+procedural_df <- read.delim("G:/workings/group_5/data/data/speeches/Congress/procedural_speech_ids.txt")
+
+periods <- tribble(
+  ~start, ~end, ~party, ~president, ~name,
+  1869, 1877, 'R', 'Ulysses S. Grant', 'Grant',
+           1877, 1881, 'R', 'Rutherford B. Hayes', 'Hayes',
+           1881, 1885, 'R', 'Chester A. Arthur', 'Arther',
+           1885, 1889, 'D', 'Grover Cleveland (85-89)', 'Cleveland',
+           1889, 1893, 'R', 'Benjamin Harrison', 'Harrison',
+           1893, 1897, 'D', 'Grover Cleveland (93-97)', 'Cleveland',
+           1897, 1902, 'R', 'William McKinley', 'McKinley',
+           1902, 1909, 'R', 'Theodore Roosevelt', 'Roosevelt',
+           1909, 1913, 'R', 'William Howard Taft', 'Taft,',
+           1913, 1921, 'D', 'Woodrow Wilson', 'Wilson',
+           1921, 1924, 'R', 'Warren G. Harding', 'Harding',
+           1924, 1929, 'R', 'Calvin Coolidge', 'Coolidge',
+           1929, 1933, 'R', 'Herbert Hoover', 'Hoover',
+           1933, 1945, 'D', 'Franklin D. Roosevelt', 'FDR',
+           1945, 1953, 'D', 'Harry S. Truman', 'Truman',
+           1953, 1961, 'R', 'Dwight D. Eisenhower', 'Eisenhower',
+           1961, 1964, 'D', 'John F. Kennedy', 'Kennedy',
+           1964, 1969, 'D', 'Lyndon B. Johnson', 'Johnson',
+           1969, 1975, 'R', 'Richard Nixon', 'Nixon',
+           1975, 1977, 'R', 'Gerald R. Ford', 'Ford',
+           1977, 1981, 'D', 'Jimmy Carter', 'Carter',
+           1981, 1989, 'R', 'Ronald Reagan', 'Reagan',
+           1989, 1993, 'R', 'George Bush', 'GWBush',
+           1993, 2001, 'D', 'William J. Clinton', 'Clinton',
+           2001, 2009, 'R', 'George W. Bush', 'GBush',
+           2009, 2017, 'D', 'Barack Obama', 'Obama',
+           2017, 2021, 'R', 'Donald J. Trump', 'Trump')
+
+
+periods <- periods %>%
+  bind_rows()
+periods <- as.matrix(periods)
+periods <- t(periods)
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
