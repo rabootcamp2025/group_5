@@ -247,3 +247,36 @@ df$doc_id <- 1:nrow(df)
 
 corpus_obj<- corpus(as.character(df$text)) 
 
+head(corpus_obj)
+
+table(df$congress)
+
+# データのインポート
+speeches_df <- stream_in(file("data/data/speeches/Congress/imm_segments_with_tone_and_metadata.jsonlist"), 
+                         verbose = FALSE)%>%
+  mutate(doc_id = paste0("doc_", row_number()))
+
+str(speeches_df)
+
+# コーパス化
+corpus_sample <- corpus(speeches_df)
+
+# トークン化
+tokens_sample <- tokens(corpus_sample)
+
+# トークン化したデータと国名辞書のマッチング
+lookup_sample <- tokens_lookup(tokens_sample, countries_dic)
+
+# DFM化
+mention_dfm <- dfm(lookup_sample)
+
+#合計集計
+result_sample <- colSums(mention_dfm)
+result_sample_df <- as.data.frame(result_sample)
+result_sample_df_2 <- attributes(result_sample_df)
+result_sample_df <- result_sample_df %>%
+  mutate(country = result_sample_df_2$row.names)
+#write_json(result_sample, "data/output/result_sample.jsonlist")
+write_csv(result_sample_df, "data/output/result_sample.csv")
+
+

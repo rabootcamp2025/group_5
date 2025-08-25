@@ -1,0 +1,148 @@
+---
+title: "bootcamp"
+format:
+  html:
+    toc: true
+    number_sections: true
+    toc_float: true
+    df_print: paged
+    embed-resources: true
+    self-contained: true
+
+execute:
+  echo: true
+  warning: true
+---
+
+### 準備
+
+```{r}
+#| echo: false
+#| warning: false
+
+
+library(tidyverse)
+library(quanteda)
+library(jsonlite)
+library(readtext)
+library(here)
+```
+
+### データのインポート
+
+```{r}
+speeches_df <- 
+  stream_in(file(here("data/data/speeches/Congress/imm_segments_with_tone_and_metadata.jsonlist")), 
+                         verbose = FALSE)%>%
+  mutate(doc_id = paste0("doc_", row_number()))
+```
+
+
+### 辞書の作成
+
+```{r}
+countries <- list('Ireland'= ('Ireland'),
+  'Germany'= ('Germany'),
+  'Mexico'= ('Mexico'),
+  'Italy'= ('Italy'),
+  'England'= ('England'),
+  'Canada'= ('Canada'),
+  'Russia'= c('Russia', 'USSR'),
+  'Poland'= ('Poland'),
+  'China'= ('China'),
+  'India'= ('India'),
+  'Sweden'= ('Sweden'),
+  'Austria'= ('Austria'),
+  'Philippines'= c('Philippines', 'Philippine'),
+  'Cuba'= ('Cuba'),
+  'Hungary'= ('Hungary'),
+  'Norway'= ('Norway'),
+  'Czechoslovakia'= c('Czechoslovakia', 'Czech', 'Slovakia', 'Slovak'),
+  'Vietnam'= ('Vietnam'),
+  'Scotland'= ('Scotland'),
+  'El Salvador'= ('El Salvador'),
+  'Korea'= ('Korea'),
+  'France'= ('France'),
+  'Dominican Republic'= ('Dominican'),
+  'Guatemala'= ('Guatemala'),
+  'Greece'= ('Greece'),
+  'Colombia'= ('Colombia'),
+  'Jamaica'= ('Jamaica'),
+  'Yugoslavia'= c('Yugoslavia', 'Serbia', 'Croatia', 'Macedonia', 'Bosnia', 'Herzegovina', 'Montenegro'),
+  'Honduras'= ('Honduras'),
+  'Japan'= ('Japan'),
+  'Haiti'= ('Haiti'),
+  'Portugal'= ('Portugal'),
+  'Denmark'= ('Denmark'),
+  'Lithuania'= ('Lithuania'),
+  'Switzerland'= ('Switzerland'),
+  'Wales'= ('Wales'),
+  'Taiwan'= ('Taiwan'),
+  'Netherlands'= c('Netherlands', 'Holland'),
+  'Brazil'= ('Brazil'),
+  'Finland'= ('Finland'),
+  'Iran'= ('Iran'),
+  'Ecuador'= ('Ecuador'),
+  'Venezuela'= ('Venezuela'),
+  'Romania'= c('Romania', 'Rumania', 'Roumania'),
+  'Peru'= ('Peru')
+)
+```
+
+### 小文字化
+
+```{r}
+countries <- map(countries, tolower)
+```
+
+
+### 辞書化
+
+```{r}
+countries_dic <- dictionary(countries)
+```
+
+```{r}
+# コーパス化
+corpus_sample <- corpus(speeches_df)
+
+# トークン化
+tokens_sample <- tokens(corpus_sample)
+
+# トークン化したデータと国名辞書のマッチング
+lookup_sample <- tokens_lookup(tokens_sample, countries_dic)
+
+# DFM化
+mention_dfm <- dfm(lookup_sample)
+
+#合計集計
+result_sample <- colSums(mention_dfm)
+result_sample_df <- as.data.frame(result_sample)
+result_sample_df_2 <- attributes(result_sample_df)
+result_sample_df <- result_sample_df %>%
+  mutate(country = result_sample_df_2$row.names)
+```
+
+
+### グラフの作成
+```{r}
+graph1 <- result_sample_df %>%
+  ggplot(aes(x= reorder(country,result_sample),y = result_sample))+
+  #scale_y_discrete(limit = factor(result_sample)) +
+  geom_col()+
+  coord_cartesian(xlim= c(0,16000))
+
+
+graph1 <- result_sample_df %>%
+  ggplot(aes(x= reorder(country,result_sample),y = result_sample))+
+  geom_col()+
+  coord_flip()+
+  labs(title = "国名言及回数") +
+  theme_bw()+
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.y = element_blank(),
+        )
+graph1
+
+
+```
